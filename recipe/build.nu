@@ -25,6 +25,25 @@ def main [] {
     let npm_cache = $env.SRC_DIR | path join ".npm-cache"
     $env.npm_config_cache = $npm_cache
 
+    # `npm pack` sweeps up everything in SRC_DIR, and rattler-build sets HOME to
+    # SRC_DIR, so the conda build scratch files and any cache written under $HOME
+    # would otherwise be installed into $PREFIX/lib/node_modules/node-red.
+    # node-red's package.json has no "files" field, so .npmignore is honoured.
+    [
+        ".npm-cache/"
+        ".npm/"
+        ".cache/"
+        ".local/"
+        ".source_info.json"
+        "build_env.sh"
+        "conda_build.sh"
+        "conda_build.log"
+        "*.tgz"
+        "pnpm-lock.yaml"
+        "third-party-licenses.txt"
+        ""
+    ] | str join "\n" | save --force --raw ($env.SRC_DIR | path join ".npmignore")
+
     # Create package archive
     ^npm pack --ignore-scripts
 
@@ -54,7 +73,7 @@ def main [] {
     print "Build completed successfully!"
 }
 
-
-
-# Run main function
-main
+# Note: nushell invokes `main` automatically when a script defines it, so there
+# must be no explicit `main` call here. Calling it ran the whole build twice,
+# and the second `npm pack` swept the work directory polluted by the first pass
+# (npm cache, pnpm store, node_modules, the previous tarball) into the package.
