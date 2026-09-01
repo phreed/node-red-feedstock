@@ -1,0 +1,44 @@
+Subject: [PATCH] Accept prerelease-tagged Node.js versions in the runtime check
+
+Node-RED gates startup on `semver.satisfies(process.version, ">=22.9.0")`.
+By default `semver` refuses to match *any* prerelease version against a range
+that does not itself carry a prerelease tag, so a Node.js build reporting
+e.g. `v26.8.0-alpha.0.0.0` is rejected outright even though 26.8.0 comfortably
+exceeds the 22.9.0 floor.
+
+conda-forge's `nodejs` packages are built from source and some builds report a
+prerelease tag in `process.version` (nodejs 26.8.0 is the current example),
+which makes `node-red` refuse to start.
+
+Passing `includePrerelease: true` keeps the intent of the guard -- versions
+below 22.9.0 (and their prereleases) are still rejected -- while allowing
+prereleases of versions at or above the floor.
+
+Upstream: https://github.com/node-red/node-red
+
+diff --git a/lib/red.js b/lib/red.js
+index 99bfe99..bd1a485 100755
+--- a/lib/red.js
++++ b/lib/red.js
+@@ -31,7 +31,7 @@ dns.setDefaultResultOrder('ipv4first');
+ 
+ function checkVersion(userSettings) {
+     var semver = require('semver');
+-    if (!semver.satisfies(process.version,">=22.9.0")) {
++    if (!semver.satisfies(process.version,">=22.9.0", { includePrerelease: true })) {
+         // var e = new Error("Unsupported version of Node.js");
+         // e.code = "unsupported_version";
+         // throw e;
+diff --git a/red.js b/red.js
+index 9b947c9..8c3eccf 100755
+--- a/red.js
++++ b/red.js
+@@ -27,7 +27,7 @@ if (process.argv[2] === 'admin') {
+ }
+ 
+ var semver = require('semver');
+-if (!semver.satisfies(process.version, ">=22.9.0")) {
++if (!semver.satisfies(process.version, ">=22.9.0", { includePrerelease: true })) {
+     console.log("Unsupported version of Node.js:", process.version);
+     console.log("Node-RED requires Node.js v22.9 or later");
+     process.exit(1)

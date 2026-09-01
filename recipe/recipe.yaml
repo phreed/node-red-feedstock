@@ -11,6 +11,13 @@ package:
 source:
   - url: https://registry.npmjs.org/node-red/-/node-red-${{ version }}.tgz
     sha256: d835861a63ed988c7b93713c7810340ef9988a3313b86f40b08f3e8adcbcd006
+    patches:
+      # conda-forge nodejs builds can report a prerelease tag in
+      # process.version (e.g. v26.8.0-alpha.0.0.0). semver.satisfies() rejects
+      # any prerelease against a non-prerelease range, so node-red refuses to
+      # start. Pass includePrerelease so the >=22.9.0 floor is honoured without
+      # tripping over the tag.
+      - patches/0001-accept-prerelease-node-versions.patch
 
 build:
   number: 0
